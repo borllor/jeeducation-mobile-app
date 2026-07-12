@@ -1,0 +1,8 @@
+{
+  "appId": "com.jeeducation.app",
+  "appName": "JE Education",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
