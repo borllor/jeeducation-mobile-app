@@ -7,7 +7,27 @@ Thumbs.db
 .claude/
 .playwright-mcp/
 
+# Local image backups — not referenced by the app, kept out of the repo
+# to avoid bloating CI checkouts (macOS runner minutes bill 10x).
+src/assets/img/backup/
+src/assets/img/Legacy/
+
 # dist/ is its OWN git repo (github.com/borllor/jeeducation-mobile-portal).
 # Release flow: npm run build, then commit & push inside dist/ —
 # the Azure Static Web Apps workflow in that repo deploys it.
 dist/
+
+# --- iOS / Capacitor native build artifacts ---
+# The ios/ platform is regenerated in CI (npx cap add ios), so it isn't tracked.
+ios/
+# In case ios/ is ever committed, still ignore the heavy build outputs:
+**/Pods/
+**/DerivedData/
+*.xcarchive
+*.ipa
+build/
+# Signing secrets must NEVER be committed — they live in GitHub Secrets.
+*.p8
+*.p12
+*.mobileprovision
+*.cer

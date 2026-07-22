@@ -1,80 +1,56 @@
 <template>
-  <div class="jetree-page">
+  <div class="jetree-page" :style="{ backgroundImage: `url(${bgLight})` }">
 
-    <!-- Header -->
-    <div class="jt-header">
-      <div class="jt-hd-left">
-        <img :src="jetreeIconImg" class="jt-brand-ico" alt="" />
+    <!-- Fixed top: header + hero + filter (over the golden tree background) -->
+    <div class="jt-top">
+
+      <!-- Header -->
+      <div class="jt-header">
+        <div class="jt-brand">
+          <img :src="brandLogo" class="jt-brand-ico" alt="JE" />
+          <span class="jt-brand-title">JE Education</span>
+        </div>
+        <div class="jt-points">
+          <img :src="pointsIcon" class="jt-points-ico" alt="" />
+          <span class="jt-points-val">{{ totalPoints }}</span>
+          <span class="jt-points-unit">pts</span>
+        </div>
       </div>
-      <div class="jt-hd-center">JE Tree</div>
-      <div class="jt-hd-right">
-        <button
-          v-if="currentGrade"
-          class="jt-cur-btn"
-          @click="jumpToCurrentClassroom"
-        >Current Lesson</button>
+
+      <!-- Hero -->
+      <div class="jt-hero">
+        <div class="jt-hero-left">
+          <div class="jt-hero-title">JE Tree</div>
+          <div class="jt-hero-sub">
+            <span>Your learning path</span>
+            <img :src="sprigImg" class="jt-hero-sprig" alt="" />
+          </div>
+        </div>
+        <button v-if="currentGrade" class="jt-return-btn" @click="jumpToCurrentClassroom"
+          aria-label="Return to current lesson">
+          <img :src="returnIcon" class="jt-return-ico" alt="" />
+        </button>
+      </div>
+
+      <!-- Selection row: Lesson Type · Year · Term -->
+      <div class="jt-filter-bar">
+        <button class="jt-filter-pill" @click="showTypePicker = true">
+          <img :src="typeSelIcon" class="jt-filter-ico" alt="" />
+          <span class="jt-filter-txt">{{ activeTypeLabel }}</span>
+          <van-icon name="arrow-down" size="12" color="#b9a98a" />
+        </button>
+        <button class="jt-filter-pill" @click="showYearPicker = true">
+          <img :src="yearSelIcon" class="jt-filter-ico" alt="" />
+          <span class="jt-filter-txt">{{ formatGrade(selectedGrade) || 'Year' }}</span>
+          <van-icon name="arrow-down" size="12" color="#b9a98a" />
+        </button>
+        <button class="jt-filter-pill" @click="showTermPicker = true">
+          <img :src="termSelIcon" class="jt-filter-ico" alt="" />
+          <span class="jt-filter-txt">{{ formatTerm(selectedTerm) || 'Term' }}</span>
+          <van-icon name="arrow-down" size="12" color="#b9a98a" />
+        </button>
       </div>
     </div>
-
-    <!-- Filter bar: Lesson Type · Year · Term -->
-    <div class="jt-filter-bar">
-      <button class="jt-filter-pill" @click="showTypePicker = true">
-        <van-icon name="label-o" size="13" color="#C89239" />
-        {{ activeTypeLabel }}
-        <van-icon name="arrow-down" size="11" color="#888" />
-      </button>
-      <div class="jt-filter-divider"></div>
-      <button class="jt-filter-pill" @click="showYearPicker = true">
-        <van-icon name="calendar-o" size="13" color="#C89239" />
-        {{ formatGrade(selectedGrade) || 'Year' }}
-        <van-icon name="arrow-down" size="11" color="#888" />
-      </button>
-      <div class="jt-filter-divider"></div>
-      <button class="jt-filter-pill" @click="showTermPicker = true">
-        <van-icon name="notes-o" size="13" color="#C89239" />
-        {{ formatTerm(selectedTerm) || 'Term' }}
-        <van-icon name="arrow-down" size="11" color="#888" />
-      </button>
-    </div>
-
-    <!-- Year picker popup -->
-    <van-popup v-model:show="showYearPicker" position="bottom" round>
-      <van-picker
-        :columns="gradeOptions"
-        :default-index="gradeOptions.findIndex(g => g.value === selectedGrade)"
-        @confirm="onYearConfirm"
-        @cancel="showYearPicker = false"
-        title="Select Year"
-        confirm-button-text="Confirm"
-        cancel-button-text="Cancel"
-      />
-    </van-popup>
-
-    <!-- Term picker popup -->
-    <van-popup v-model:show="showTermPicker" position="bottom" round>
-      <van-picker
-        :columns="termOptions"
-        :default-index="termOptions.findIndex(t => t.value === selectedTerm)"
-        @confirm="onTermConfirm"
-        @cancel="showTermPicker = false"
-        title="Select Term"
-        confirm-button-text="Confirm"
-        cancel-button-text="Cancel"
-      />
-    </van-popup>
-
-    <!-- Lesson Type picker popup -->
-    <van-popup v-model:show="showTypePicker" position="bottom" round>
-      <van-picker
-        :columns="courseTypeOptions"
-        :default-index="courseTypeOptions.findIndex(t => t.value === activeType)"
-        @confirm="onTypeConfirm"
-        @cancel="showTypePicker = false"
-        title="Lesson Type"
-        confirm-button-text="Confirm"
-        cancel-button-text="Cancel"
-      />
-    </van-popup>
 
     <!-- Loading -->
     <div v-if="loading" class="jt-loading">
@@ -90,51 +66,92 @@
     <!-- Week list -->
     <div v-else class="jt-scroll" ref="treeScroll">
       <div class="jt-list">
-        <div
-          v-for="(lesson, idx) in lessons"
-          :key="lesson.lessonId"
-          class="jt-row"
-          :data-lid="lesson.lessonId"
-          @click="openLeaf(lesson)"
-        >
-          <!-- Trunk line segment -->
+        <div v-for="(lesson, idx) in lessons" :key="lesson.lessonId" class="jt-row" :data-lid="lesson.lessonId">
+          <!-- Trunk line + status leaf badge -->
           <div class="jt-trunk-col">
-            <div class="jt-trunk-line jt-trunk-line--top" :class="{ 'jt-trunk-line--first': idx === 0 }"></div>
-            <div class="jt-node" :class="nodeClass(lesson)">
-              <img v-if="isUnlocked(lesson)" :src="unlockImg" class="jt-node-img" alt="" />
-              <img v-else-if="hasAnyPurchase(lesson)" :src="halfLockImg" class="jt-node-img" alt="" />
-              <van-icon v-else name="lock" size="14" color="#fff" />
-            </div>
-            <div class="jt-trunk-line jt-trunk-line--bot" :class="{ 'jt-trunk-line--last': idx === lessons.length - 1 }"></div>
+            <span class="jt-trunk-line"
+              :class="{ 'jt-trunk-line--first': idx === 0, 'jt-trunk-line--last': idx === lessons.length - 1 }"></span>
+            <span class="jt-badge">
+              <img :src="statusBg(lesson)" class="jt-badge-bg" alt="" />
+              <img :src="statusIcon(lesson)" class="jt-badge-ico" alt="" />
+            </span>
           </div>
 
-          <!-- Lesson card -->
-          <div class="jt-card" :class="cardClass(lesson)" :style="leafBorderStyle(lesson)">
-            <div class="jt-card-top">
-              <span class="jt-week-badge" :class="weekBadgeClass(lesson)">W{{ lesson.displayOrder }}</span>
-              <span v-if="lesson.lessonId === currentLesson?.lessonId" class="jt-cur-badge">Current</span>
-              <span v-if="scopeTitle(lesson)" class="jt-scope-badge" :style="{ color: scopeColor(lesson) }">{{ scopeTitle(lesson) }}</span>
+          <!-- Leaf card (border contains the expanded resource panel) -->
+          <div class="jt-leaf"
+            :class="{ 'jt-leaf--expanded': isExpanded(lesson), 'jt-leaf--current': lesson.lessonId === currentLesson?.lessonId }">
+            <div class="jt-leaf-head">
+              <span class="jt-week">W{{ lesson.displayOrder }}</span>
+              <span class="jt-name" @click="openLeaf(lesson)">{{ lesson.name }}</span>
+              <span v-if="scopeTitle(lesson)" class="jt-scope" :style="{ color: scopeColor(lesson) }">{{
+                scopeTitle(lesson) }}</span>
+              <button class="jt-chev" @click="toggleExpand(lesson)" aria-label="Toggle resources">
+                <van-icon :name="isExpanded(lesson) ? 'arrow-up' : 'arrow-down'" size="16" color="#a89a80" />
+              </button>
             </div>
-            <div class="jt-card-name">{{ lesson.name }}</div>
+
+            <!-- Animated learning-resource panel -->
+            <div class="jt-res-wrap" :class="{ 'jt-res-wrap--open': isExpanded(lesson) }">
+              <div class="jt-res-inner">
+                <div v-if="leafResources(lesson).length" class="jt-res-grid">
+                  <div v-for="r in leafResources(lesson)" :key="r.name" class="jt-rcard"
+                    :class="{ 'jt-rcard--lock': !r.unlocked }" @click="onResourceClick(lesson, r)">
+                    <div class="jt-rcard-ico">
+                      <img :src="r.icon" alt="" />
+                      <span v-if="!r.unlocked" class="jt-rcard-lockbadge">
+                        <van-icon name="lock" size="10" color="#fff" />
+                      </span>
+                    </div>
+                    <div class="jt-rcard-txt">
+                      <div class="jt-rcard-name">{{ r.name }}</div>
+                      <div v-if="r.unlocked" class="jt-rcard-sub">{{ r.subtitle }}</div>
+                      <div v-else-if="r.pending" class="jt-rcard-sub">Unlocks after lesson</div>
+                      <div v-else-if="r.priceNow > 0" class="jt-rcard-price">
+                        <span v-if="r.priceWas > r.priceNow" class="jt-price-was">{{ r.priceWas }}</span>
+                        <span class="jt-price-now">{{ r.priceNow }}</span>
+                        <span class="jt-price-unit">pts</span>
+                      </div>
+                      <div v-else class="jt-rcard-sub">Tap to unlock</div>
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="jt-res-empty">No resources available</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Leaf detail bottom sheet -->
-    <van-popup
-      v-model:show="showLeafPopup"
-      position="bottom"
-      round
-      :style="{ height: '88%' }"
-      safe-area-inset-bottom
-    >
+    <!-- Year picker -->
+    <van-popup v-model:show="showYearPicker" position="bottom" round teleport="body" class="jt-above-nav"
+      :style="{ bottom: navHeight + 'px' }">
+      <van-picker :columns="gradeOptions" :default-index="gradeOptions.findIndex(g => g.value === selectedGrade)"
+        @confirm="onYearConfirm" @cancel="showYearPicker = false" title="Select Year" confirm-button-text="Confirm"
+        cancel-button-text="Cancel" />
+    </van-popup>
+
+    <!-- Term picker -->
+    <van-popup v-model:show="showTermPicker" position="bottom" round teleport="body" class="jt-above-nav"
+      :style="{ bottom: navHeight + 'px' }">
+      <van-picker :columns="termOptions" :default-index="termOptions.findIndex(t => t.value === selectedTerm)"
+        @confirm="onTermConfirm" @cancel="showTermPicker = false" title="Select Term" confirm-button-text="Confirm"
+        cancel-button-text="Cancel" />
+    </van-popup>
+
+    <!-- Lesson Type picker -->
+    <van-popup v-model:show="showTypePicker" position="bottom" round teleport="body" class="jt-above-nav"
+      :style="{ bottom: navHeight + 'px' }">
+      <van-picker :columns="courseTypeOptions" :default-index="courseTypeOptions.findIndex(t => t.value === activeType)"
+        @confirm="onTypeConfirm" @cancel="showTypePicker = false" title="Lesson Type" confirm-button-text="Confirm"
+        cancel-button-text="Cancel" />
+    </van-popup>
+
+    <!-- Lesson detail dialog: full name + description (no resources) -->
+    <van-popup v-model:show="showLeafPopup" position="bottom" round teleport="body" class="jt-above-nav"
+      :style="{ maxHeight: '70%', bottom: navHeight + 'px' }">
       <div class="jt-dlg" v-if="dlgLeaf">
-
-        <!-- Drag handle -->
         <div class="jt-dlg-handle"></div>
-
-        <!-- Lesson header -->
         <div class="jt-dlg-hd">
           <div class="jt-dlg-title">{{ dlgLeaf.name }}</div>
           <div class="jt-dlg-sub">
@@ -145,148 +162,10 @@
             </template>
           </div>
         </div>
-
-        <!-- Single panel: Lesson Details above Learning Resources -->
         <div class="jt-dlg-scroll">
-          <div class="jt-tab-body">
-
-            <!-- Description & Objectives -->
-            <div class="jt-sec-hd">
-              <img :src="descriptionImg" class="jt-sec-ico" alt="" />
-              <span>Description & Objectives</span>
-            </div>
-            <div v-if="dlgLeaf.description" class="jt-desc" v-html="dlgLeaf.description"></div>
-            <van-empty v-else description="No description available" />
-
-            <!-- Learning Resources -->
-            <div class="jt-sec-hd jt-sec-hd--res">
-              <img :src="learningResourcesImg" class="jt-sec-ico" alt="" />
-              <span>Learning Resources</span>
-            </div>
-
-              <!-- Basic Services -->
-              <template v-if="hasAnyBasic(dlgLeaf)">
-                <div class="jt-grp-lbl">Basic Services</div>
-                <div class="jt-res-grid">
-
-                  <div v-if="hasLink(dlgLeaf.replayLinkForHot)" class="jt-rcard">
-                    <div class="jt-rico-wrap" :class="isBasicUnlocked(dlgLeaf, 'Replay(A)') ? 'jt-rico--open' : 'jt-rico--lock'">
-                      <img :src="isBasicUnlocked(dlgLeaf, 'Replay(A)') ? replayImg : lockImg" class="jt-rico" />
-                    </div>
-                    <div class="jt-rnm">Replay (A)</div>
-                    <button
-                      class="jt-rbtn"
-                      :class="isBasicUnlocked(dlgLeaf, 'Replay(A)') ? 'jt-rbtn--watch' : 'jt-rbtn--price'"
-                      @click="isBasicUnlocked(dlgLeaf, 'Replay(A)') ? openResource(dlgLeaf.replayLinkForHot, 'Replay (A)') : handleUnlock(dlgLeaf, 'Replay(A)', 'Replay (A)', false)"
-                      v-html="isBasicUnlocked(dlgLeaf, 'Replay(A)') ? 'Watch' : unlockLabel(dlgLeaf, 'Replay(A)', false)"
-                    ></button>
-                  </div>
-
-                  <div v-if="hasLink(dlgLeaf.replayLink)" class="jt-rcard">
-                    <div class="jt-rico-wrap" :class="isBasicUnlocked(dlgLeaf, 'Replay(B)') ? 'jt-rico--open' : 'jt-rico--lock'">
-                      <img :src="isBasicUnlocked(dlgLeaf, 'Replay(B)') ? replayImg : lockImg" class="jt-rico" />
-                    </div>
-                    <div class="jt-rnm">Replay (B)</div>
-                    <button
-                      class="jt-rbtn"
-                      :class="isBasicUnlocked(dlgLeaf, 'Replay(B)') ? 'jt-rbtn--watch' : 'jt-rbtn--price'"
-                      @click="isBasicUnlocked(dlgLeaf, 'Replay(B)') ? openResource(dlgLeaf.replayLink, 'Replay (B)') : handleUnlock(dlgLeaf, 'Replay(B)', 'Replay (B)', false)"
-                      v-html="isBasicUnlocked(dlgLeaf, 'Replay(B)') ? 'Watch' : unlockLabel(dlgLeaf, 'Replay(B)', false)"
-                    ></button>
-                  </div>
-
-                  <div v-if="hasLink(dlgLeaf.homeworkLink)" class="jt-rcard">
-                    <div class="jt-rico-wrap" :class="isBasicUnlocked(dlgLeaf, 'Homework') ? 'jt-rico--open' : 'jt-rico--lock'">
-                      <img :src="isBasicUnlocked(dlgLeaf, 'Homework') ? homeworkImg : lockImg" class="jt-rico" />
-                    </div>
-                    <div class="jt-rnm">Homework</div>
-                    <button
-                      class="jt-rbtn"
-                      :class="isBasicUnlocked(dlgLeaf, 'Homework') ? 'jt-rbtn--start' : 'jt-rbtn--price'"
-                      @click="isBasicUnlocked(dlgLeaf, 'Homework') ? openResource(dlgLeaf.homeworkLink, 'Homework') : handleUnlock(dlgLeaf, 'Homework', 'Homework', false)"
-                      v-html="isBasicUnlocked(dlgLeaf, 'Homework') ? 'Start' : unlockLabel(dlgLeaf, 'Homework', false)"
-                    ></button>
-                  </div>
-
-                  <div v-if="hasLink(dlgLeaf.answerLink)" class="jt-rcard">
-                    <div class="jt-rico-wrap" :class="isBasicUnlocked(dlgLeaf, 'Answer') ? 'jt-rico--open' : 'jt-rico--lock'">
-                      <img :src="isBasicUnlocked(dlgLeaf, 'Answer') ? fullSolutionImg : lockImg" class="jt-rico" />
-                    </div>
-                    <div class="jt-rnm">Full Solution</div>
-                    <button
-                      class="jt-rbtn"
-                      :class="isBasicUnlocked(dlgLeaf, 'Answer') ? 'jt-rbtn--download' : 'jt-rbtn--price'"
-                      @click="isBasicUnlocked(dlgLeaf, 'Answer') ? openResource(dlgLeaf.answerLink, 'Full Solution') : handleUnlock(dlgLeaf, 'Answer', 'Full Solution', false)"
-                      v-html="isBasicUnlocked(dlgLeaf, 'Answer') ? 'Download' : unlockLabel(dlgLeaf, 'Answer', false)"
-                    ></button>
-                  </div>
-
-                </div>
-              </template>
-
-              <!-- Extra Services -->
-              <template v-if="hasAnyExtra(dlgLeaf)">
-                <div class="jt-grp-lbl jt-grp-lbl--extra">Extra Services</div>
-                <div class="jt-res-grid">
-
-                  <div v-if="hasLink(dlgLeaf.linkForExtraFoundationExercise)" class="jt-rcard">
-                    <div class="jt-rico-wrap" :class="isExtraUnlocked(dlgLeaf, 'ExtraFoundationExercise') ? 'jt-rico--open' : 'jt-rico--lock'">
-                      <img :src="isExtraUnlocked(dlgLeaf, 'ExtraFoundationExercise') ? extraFoundationImg : lockImg" class="jt-rico" />
-                    </div>
-                    <div class="jt-rnm">Extra<br>Foundation</div>
-                    <button
-                      class="jt-rbtn"
-                      :class="isExtraUnlocked(dlgLeaf, 'ExtraFoundationExercise') ? 'jt-rbtn--access' : 'jt-rbtn--price'"
-                      @click="isExtraUnlocked(dlgLeaf, 'ExtraFoundationExercise') ? openResource(dlgLeaf.linkForExtraFoundationExercise, 'Extra Foundation') : handleUnlock(dlgLeaf, 'ExtraFoundationExercise', 'Extra Foundation', true)"
-                      v-html="isExtraUnlocked(dlgLeaf, 'ExtraFoundationExercise') ? 'Access' : unlockLabel(dlgLeaf, 'ExtraFoundationExercise', true)"
-                    ></button>
-                  </div>
-
-                  <div v-if="hasLink(dlgLeaf.linkForExtraDevelopmentExercise)" class="jt-rcard">
-                    <div class="jt-rico-wrap" :class="isExtraUnlocked(dlgLeaf, 'ExtraDevelopmentExercise') ? 'jt-rico--open' : 'jt-rico--lock'">
-                      <img :src="isExtraUnlocked(dlgLeaf, 'ExtraDevelopmentExercise') ? extraDevelopmentImg : lockImg" class="jt-rico" />
-                    </div>
-                    <div class="jt-rnm">Extra<br>Development</div>
-                    <button
-                      class="jt-rbtn"
-                      :class="isExtraUnlocked(dlgLeaf, 'ExtraDevelopmentExercise') ? 'jt-rbtn--access' : 'jt-rbtn--price'"
-                      @click="isExtraUnlocked(dlgLeaf, 'ExtraDevelopmentExercise') ? openResource(dlgLeaf.linkForExtraDevelopmentExercise, 'Extra Development') : handleUnlock(dlgLeaf, 'ExtraDevelopmentExercise', 'Extra Development', true)"
-                      v-html="isExtraUnlocked(dlgLeaf, 'ExtraDevelopmentExercise') ? 'Access' : unlockLabel(dlgLeaf, 'ExtraDevelopmentExercise', true)"
-                    ></button>
-                  </div>
-
-                  <div v-if="hasLink(dlgLeaf.linkForExtraEnrichmentExercise)" class="jt-rcard">
-                    <div class="jt-rico-wrap" :class="isExtraUnlocked(dlgLeaf, 'ExtraEnrichmentExercise') ? 'jt-rico--open' : 'jt-rico--lock'">
-                      <img :src="isExtraUnlocked(dlgLeaf, 'ExtraEnrichmentExercise') ? extraEnrichmentImg : lockImg" class="jt-rico" />
-                    </div>
-                    <div class="jt-rnm">Extra<br>Enrichment</div>
-                    <button
-                      class="jt-rbtn"
-                      :class="isExtraUnlocked(dlgLeaf, 'ExtraEnrichmentExercise') ? 'jt-rbtn--access' : 'jt-rbtn--price'"
-                      @click="isExtraUnlocked(dlgLeaf, 'ExtraEnrichmentExercise') ? openResource(dlgLeaf.linkForExtraEnrichmentExercise, 'Extra Enrichment') : handleUnlock(dlgLeaf, 'ExtraEnrichmentExercise', 'Extra Enrichment', true)"
-                      v-html="isExtraUnlocked(dlgLeaf, 'ExtraEnrichmentExercise') ? 'Access' : unlockLabel(dlgLeaf, 'ExtraEnrichmentExercise', true)"
-                    ></button>
-                  </div>
-
-                  <div v-if="hasLink(dlgLeaf.linkForRevisionExercise)" class="jt-rcard">
-                    <div class="jt-rico-wrap" :class="isExtraUnlocked(dlgLeaf, 'RevisionExercise') ? 'jt-rico--open' : 'jt-rico--lock'">
-                      <img :src="isExtraUnlocked(dlgLeaf, 'RevisionExercise') ? revisionExerciseImg : lockImg" class="jt-rico" />
-                    </div>
-                    <div class="jt-rnm">Revision<br>Exercise</div>
-                    <button
-                      class="jt-rbtn"
-                      :class="isExtraUnlocked(dlgLeaf, 'RevisionExercise') ? 'jt-rbtn--access' : 'jt-rbtn--price'"
-                      @click="isExtraUnlocked(dlgLeaf, 'RevisionExercise') ? openResource(dlgLeaf.linkForRevisionExercise, 'Revision Exercise') : handleUnlock(dlgLeaf, 'RevisionExercise', 'Revision Exercise', true)"
-                      v-html="isExtraUnlocked(dlgLeaf, 'RevisionExercise') ? 'Access' : unlockLabel(dlgLeaf, 'RevisionExercise', true)"
-                    ></button>
-                  </div>
-
-                </div>
-              </template>
-
-              <van-empty v-if="!hasAnyBasic(dlgLeaf) && !hasAnyExtra(dlgLeaf)" description="No resources available" />
-
-          </div>
+          <div class="jt-sec-hd">Description &amp; Objectives</div>
+          <div v-if="dlgLeaf.description" class="jt-desc" v-html="dlgLeaf.description"></div>
+          <van-empty v-else description="No description available" />
         </div>
       </div>
     </van-popup>
@@ -299,20 +178,30 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { getData, postData } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
-import jetreeIconImg from '@/assets/img/jetree-icon.png'
-import replayImg from '@/assets/img/replay.png'
-import homeworkImg from '@/assets/img/homework.png'
-import unlockImg from '@/assets/img/unlock2.png'
-import halfLockImg from '@/assets/img/half-lock.png'
-import extraFoundationImg from '@/assets/img/extra-fundation.png'
-import extraDevelopmentImg from '@/assets/img/extra-development.png'
-import extraEnrichmentImg from '@/assets/img/extra-enrichment.png'
-import revisionExerciseImg from '@/assets/img/revision-excercise.png'
-import fullSolutionImg from '@/assets/img/full-solution.png'
-import lockImg from '@/assets/img/lock.png'
-import descriptionImg from '@/assets/img/description.png'
-import learningResourcesImg from '@/assets/img/learning-resources.png'
 import { showConfirmDialog, showToast, showDialog } from 'vant'
+
+import bgLight from '@/assets/img/new/jetree-light-bg.png'
+import brandLogo from '@/assets/img/new/jeeducation-icon.png'
+import pointsIcon from '@/assets/img/new/points-icon.png'
+import sprigImg from '@/assets/img/new/your-learning-path-icon.png'
+import returnIcon from '@/assets/img/new/return-to-current-lesson-icon.png'
+import typeSelIcon from '@/assets/img/new/lesson-type-icon.png'
+import yearSelIcon from '@/assets/img/new/year-select-icon.png'
+import termSelIcon from '@/assets/img/new/term-select-icon.png'
+import lockIconImg from '@/assets/img/new/lock-icon.png'
+import unlockIconImg from '@/assets/img/new/unlock-icon.png'
+import halfLockIconImg from '@/assets/img/new/half-lock-icon.png'
+import lockBgImg from '@/assets/img/new/lock-icon-bg.png'
+import unlockBgImg from '@/assets/img/new/unlock-icon-bg.png'
+import halfLockBgImg from '@/assets/img/new/half-lock-icon-bg.png'
+import replayAImg from '@/assets/img/new/replay-a-icon.png'
+import replayBImg from '@/assets/img/new/replay-b-icon.png'
+import homeworkImg from '@/assets/img/new/homework-icon.png'
+import homeworkAnswersImg from '@/assets/img/new/homework-anwers-icon.png'
+import extraFoundationImg from '@/assets/img/new/extra-foundation-icon.png'
+import extraDevelopmentImg from '@/assets/img/new/extra-development-icon.png'
+import extraEnrichmentImg from '@/assets/img/new/extra-enrichment-icon.png'
+import revisionExerciseImg from '@/assets/img/new/revision-exercise-icon.png'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -321,12 +210,15 @@ const router = useRouter()
 const loading = ref(true)
 const tableData = ref({})
 const studentInClassRooms = ref([])
-const scopeConfig = ref({})   // { [scopeName]: { leaf_BG_Color, ... } }
+const scopeConfig = ref({})
 const purchasedRecords = ref([])
 const courseList = ref([])
 const globalConfigKV = ref([])
 const activeType = ref('HSC_Course_Advanced')
 const treeScroll = ref(null)
+const totalPoints = ref(0)
+// Bottom-nav height, measured at runtime so bottom sheets end at the nav's top edge
+const navHeight = ref(58)
 
 // Student's active classroom — used ONLY for unlock logic, never changes after init
 const currentGrade = ref('')
@@ -342,20 +234,19 @@ const showYearPicker = ref(false)
 const showTermPicker = ref(false)
 const showTypePicker = ref(false)
 
-// Leaf popup
+// Lesson detail dialog + expanded leaves
 const showLeafPopup = ref(false)
 const dlgLeaf = ref(null)
+const expandedIds = ref(new Set())
 
 // ── Course types ───────────────────────────────────────────────────────────────
 const courseTypes = [
-  { value: 'Junior_Course',           label: 'Junior' },
-  { value: 'HSC_Course_Advanced',     label: 'Advanced' },
-  { value: 'HSC_Course_Extension_1',  label: 'Extension 1' },
-  { value: 'HSC_Course_Extension_2',  label: 'Extension 2' },
+  { value: 'Junior_Course', label: 'Junior' },
+  { value: 'HSC_Course_Advanced', label: 'Advanced' },
+  { value: 'HSC_Course_Extension_1', label: 'Extension 1' },
+  { value: 'HSC_Course_Extension_2', label: 'Extension 2' },
 ]
-
 const courseTypeOptions = courseTypes.map(t => ({ text: t.label, value: t.value }))
-
 const activeTypeLabel = computed(
   () => courseTypes.find(t => t.value === activeType.value)?.label ?? 'Type'
 )
@@ -422,7 +313,6 @@ function isPendingCurrentTerm(lesson) {
 }
 
 // ── Filter options derived from tableData keys ─────────────────────────────────
-// Only show grades that have at least one lesson of the selected activeType
 const gradeOptions = computed(() => {
   const grades = new Map()
   for (const key of Object.keys(tableData.value || {})) {
@@ -438,7 +328,6 @@ const gradeOptions = computed(() => {
     .map(([g]) => ({ text: formatGrade(g), value: g }))
 })
 
-// Only show terms for the selected grade that have lessons of the selected activeType
 const termOptions = computed(() => {
   const terms = new Map()
   for (const key of Object.keys(tableData.value || {})) {
@@ -467,13 +356,14 @@ const lessons = computed(() => {
     .sort((a, b) => b.displayOrder - a.displayOrder)
 })
 
-// currentLesson: lesson matching the student's actual active week, only when viewing active grade/term
+// currentLesson: lesson matching the student's actual active week, only when viewing active grade/term.
 const currentLesson = computed(() => {
   const isViewingActiveGT =
     selectedGrade.value.toLowerCase() === currentGrade.value.toLowerCase() &&
     selectedTerm.value.toLowerCase() === currentTerm.value.toLowerCase()
-  if (!isViewingActiveGT) return null
-  const week = currentAccessibleWeek.value
+  if (!isViewingActiveGT || !lessons.value.length) return null
+  const maxWeek = lessons.value[0].displayOrder // lessons sorted descending
+  const week = Math.min(Math.max(currentAccessibleWeek.value, 1), maxWeek)
   return lessons.value.find(l => l.displayOrder === week) || null
 })
 
@@ -523,7 +413,6 @@ async function loadData() {
       }
     }
 
-    // Auto-select course type that has lessons for current grade/term
     await nextTick()
     ensureActiveTypeHasLessons()
   } catch (e) {
@@ -532,9 +421,18 @@ async function loadData() {
     loading.value = false
     await nextTick()
     if (currentLesson.value) {
-      setTimeout(() => scrollToLeaf(currentLesson.value), 400)
+      // Expand the current lesson's resource panel by default, then reveal it.
+      expandedIds.value = new Set([currentLesson.value.lessonId])
+      nextTick(() => setTimeout(() => scrollExpandedIntoView(currentLesson.value, true), 420))
     }
   }
+}
+
+async function loadPoints() {
+  try {
+    const res = await getData(`points/student/${auth.username}`, null, { isShowLoading: false })
+    if (res?.code === '200' && res?.result) totalPoints.value = res.result.points || 0
+  } catch { /* silent */ }
 }
 
 function initClassroom(rooms) {
@@ -548,7 +446,6 @@ function initClassroom(rooms) {
   if (active) {
     currentGrade.value = active.classRoom.grade
     currentTerm.value = active.classRoom.term
-    // Filter defaults to the student's active classroom
     selectedGrade.value = active.classRoom.grade
     selectedTerm.value = active.classRoom.term
     if (active.classRoom.startDate) {
@@ -563,8 +460,6 @@ function initClassroom(rooms) {
 }
 
 function ensureActiveTypeHasLessons() {
-  // Called after grade/term changes. If the current type has no lessons for
-  // the selected grade/term, fall back to the first type that does.
   if (lessons.value.length > 0) return
   const keyLower = `${selectedGrade.value}-${selectedTerm.value}`.toLowerCase()
   const matchingKey = Object.keys(tableData.value).find(k => k.toLowerCase() === keyLower)
@@ -577,12 +472,10 @@ function ensureActiveTypeHasLessons() {
 function setActiveType(type) {
   activeType.value = type
   nextTick(() => {
-    // If current selectedGrade has no lessons for the new type, reset to first valid grade
     if (!gradeOptions.value.some(g => g.value === selectedGrade.value)) {
       selectedGrade.value = gradeOptions.value[0]?.value ?? ''
     }
     nextTick(() => {
-      // If current selectedTerm has no lessons for new type+grade, reset to first valid term
       if (!termOptions.value.some(t => t.value === selectedTerm.value)) {
         selectedTerm.value = termOptions.value[0]?.value ?? ''
       }
@@ -598,7 +491,6 @@ function onYearConfirm({ selectedOptions }) {
   const grade = selectedOptions?.[0]?.value
   if (!grade || grade === selectedGrade.value) return
   selectedGrade.value = grade
-  // Reset term to first available for this grade
   nextTick(() => {
     if (termOptions.value.length > 0) {
       selectedTerm.value = termOptions.value[0].value
@@ -623,13 +515,16 @@ function onTypeConfirm({ selectedOptions }) {
 }
 
 function jumpToCurrentClassroom() {
-  // Switch filter back to student's active classroom and scroll to current lesson
   selectedGrade.value = currentGrade.value
   selectedTerm.value = currentTerm.value
   nextTick(() => {
     ensureActiveTypeHasLessons()
     nextTick(() => {
-      if (currentLesson.value) scrollToLeaf(currentLesson.value)
+      if (!currentLesson.value) return
+      expandedIds.value = new Set([currentLesson.value.lessonId])
+      // Wait for the list re-render + the 0.32s expand animation, then bring the
+      // whole resource panel into view (scrolls to bottom when it's the last leaf).
+      nextTick(() => setTimeout(() => scrollExpandedIntoView(currentLesson.value, true), 360))
     })
   })
 }
@@ -641,7 +536,62 @@ function scrollToLeaf(leaf) {
   const sr = treeScroll.value
   const top = sr.scrollTop + el.getBoundingClientRect().top - sr.getBoundingClientRect().top
     - sr.clientHeight / 2 + el.clientHeight / 2
-  sr.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+  animateScrollTo(sr, Math.max(0, top))
+}
+
+// Smooth-scroll a container with an eased rAF loop. Native `behavior: 'smooth'`
+// is unreliable inside the Capacitor WebView (esp. iOS), so we animate manually.
+function animateScrollTo(el, to, duration = 440) {
+  to = Math.max(0, Math.min(to, el.scrollHeight - el.clientHeight))
+  const start = el.scrollTop
+  const change = to - start
+  if (Math.abs(change) < 2) return
+  const t0 = performance.now()
+  const ease = t => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2) // easeInOutQuad
+  function frame(now) {
+    const p = Math.min(1, (now - t0) / duration)
+    el.scrollTop = start + change * ease(p)
+    if (p < 1) requestAnimationFrame(frame)
+  }
+  requestAnimationFrame(frame)
+}
+
+// After a leaf expands, reveal its resource panel with a downward animation:
+// scroll so the NEXT leaf comes into view (whole panel shown, next leaf peeking),
+// or all the way to the bottom for the last leaf.
+// force = true always repositions (used by the return-to-current jump, where the
+// leaf may currently be off-screen); otherwise only acts when the panel is clipped.
+function scrollExpandedIntoView(lesson, force = false) {
+  const sr = treeScroll.value
+  if (!sr) return
+  const rows = [...sr.querySelectorAll('.jt-row')]
+  const row = sr.querySelector(`[data-lid="${lesson.lessonId}"]`)
+  const idx = rows.indexOf(row)
+  if (!row || idx < 0) return
+
+  const srRect = sr.getBoundingClientRect()
+  const rowRect = row.getBoundingClientRect()
+  const gap = 16
+  const isLast = idx === rows.length - 1
+  const hiddenBelow = rowRect.bottom > srRect.bottom - gap
+  const tooTall = row.offsetHeight + gap * 2 >= srRect.height
+
+  // Already fully in view → leave the scroll position alone
+  if (!force && !hiddenBelow && !tooTall) return
+
+  let target
+  if (isLast) {
+    // Last leaf → scroll to the very bottom
+    target = sr.scrollHeight - sr.clientHeight
+  } else if (tooTall) {
+    // Taller than the viewport → pin the head near the top so all resources are reachable
+    target = sr.scrollTop + (rowRect.top - srRect.top) - gap
+  } else {
+    // Bring the next leaf's top just above the nav so the whole panel shows + next peeks in
+    const nextRect = rows[idx + 1].getBoundingClientRect()
+    target = sr.scrollTop + (nextRect.top - srRect.top) - (srRect.height - gap)
+  }
+  animateScrollTo(sr, target, 440)
 }
 
 // ── Purchase / unlock helpers ──────────────────────────────────────────────────
@@ -662,18 +612,6 @@ function isBasicUnlocked(lesson, itemId) {
 function isExtraUnlocked(lesson, itemId) {
   if (purchasedRecords.value.some(r => r.objectId === lesson.lessonId && r.itemId === itemId)) return true
   return isUnlocked(lesson)
-}
-
-function hasAnyBasic(lesson) {
-  return hasLink(lesson.replayLinkForHot) || hasLink(lesson.replayLink) ||
-    hasLink(lesson.homeworkLink) || hasLink(lesson.answerLink)
-}
-
-function hasAnyExtra(lesson) {
-  return hasLink(lesson.linkForExtraFoundationExercise) ||
-    hasLink(lesson.linkForExtraDevelopmentExercise) ||
-    hasLink(lesson.linkForExtraEnrichmentExercise) ||
-    hasLink(lesson.linkForRevisionExercise)
 }
 
 function calculateUnlockData(lesson, itemId, isExtra) {
@@ -725,21 +663,11 @@ function calculateUnlockData(lesson, itemId, isExtra) {
   return { points, discountPoints, durationDays, expiryTime }
 }
 
-function unlockLabel(lesson, itemId, isExtra) {
-  if (isPendingCurrentTerm(lesson)) return `<span style="font-size:12px">Unlocks after lesson</span>`
-  const d = calculateUnlockData(lesson, itemId, isExtra)
-  if (d.discountPoints > 0) {
-    const original = d.points + d.discountPoints
-    return `<span style="color:#B5B5B5;font-size:12px;">Was <s>${original}</s></span><br>${d.points} pts`
-  }
-  return `${d.points} pts`
-}
-
 async function handleUnlock(lesson, itemId, linkText, isExtra) {
   if (isPendingCurrentTerm(lesson)) {
     showDialog({
       title: linkText,
-      message: 'This resource is included in your current course.\nIt will unlock automatically after the lesson has been taught.',
+      message: 'Locked for now! This unlocks at midnight after your lesson. 💤',
       confirmButtonText: 'OK',
       confirmButtonColor: '#C89239',
     })
@@ -784,19 +712,59 @@ async function handleUnlock(lesson, itemId, linkText, isExtra) {
   }
 }
 
-// ── Leaf popup ─────────────────────────────────────────────────────────────────
+// ── Learning resources for a leaf (same fields/logic as before) ────────────────
+function hasLink(url) { return !!(url && url.trim()) }
+
+function leafResources(lesson) {
+  const out = []
+  const pending = isPendingCurrentTerm(lesson)
+  const add = (link, name, subtitle, icon, itemId, isExtra) => {
+    if (!hasLink(link)) return
+    const unlocked = isExtra ? isExtraUnlocked(lesson, itemId) : isBasicUnlocked(lesson, itemId)
+    // For a locked, purchasable resource, surface its unlock cost (was / now).
+    // calculateUnlockData returns { points: discounted price, discountPoints: savings },
+    // so original price = points + discountPoints (matches JETreeV2 unlockLabel).
+    let priceNow = 0, priceWas = 0
+    if (!unlocked && !pending) {
+      const d = calculateUnlockData(lesson, itemId, isExtra)
+      priceNow = d.points
+      priceWas = d.points + d.discountPoints
+    }
+    out.push({ link, name, subtitle, icon, itemId, isExtra, unlocked, pending, priceNow, priceWas })
+  }
+  add(lesson.replayLinkForHot, 'Replay A', 'Watch lesson', replayAImg, 'Replay(A)', false)
+  add(lesson.replayLink, 'Replay B', 'Watch lesson', replayBImg, 'Replay(B)', false)
+  add(lesson.homeworkLink, 'Homework', 'View tasks', homeworkImg, 'Homework', false)
+  add(lesson.answerLink, 'Homework Ans', 'View solutions', homeworkAnswersImg, 'Answer', false)
+  add(lesson.linkForExtraFoundationExercise, 'Extra Foundation', 'Strengthen basics', extraFoundationImg, 'ExtraFoundationExercise', true)
+  add(lesson.linkForExtraDevelopmentExercise, 'Extra Development', 'Level up skills', extraDevelopmentImg, 'ExtraDevelopmentExercise', true)
+  add(lesson.linkForExtraEnrichmentExercise, 'Extra Enrichment', 'Go beyond', extraEnrichmentImg, 'ExtraEnrichmentExercise', true)
+  add(lesson.linkForRevisionExercise, 'Revision Exercise', 'Test your knowledge', revisionExerciseImg, 'RevisionExercise', true)
+  return out
+}
+
+function onResourceClick(lesson, r) {
+  if (r.unlocked) openResource(r.link, r.name)
+  else handleUnlock(lesson, r.itemId, r.name, r.isExtra)
+}
+
+// ── Leaf expand / detail dialog ────────────────────────────────────────────────
+function isExpanded(lesson) { return expandedIds.value.has(lesson.lessonId) }
+
+function toggleExpand(lesson) {
+  const willExpand = !expandedIds.value.has(lesson.lessonId)
+  // Accordion: only one resource panel open at a time — opening a leaf closes any other.
+  expandedIds.value = willExpand ? new Set([lesson.lessonId]) : new Set()
+  // Wait for the 0.32s open animation to finish, then bring the panel into view.
+  if (willExpand) nextTick(() => setTimeout(() => scrollExpandedIntoView(lesson), 340))
+}
+
 function openLeaf(lesson) {
   dlgLeaf.value = lesson
   showLeafPopup.value = true
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-function leafBorderStyle(lesson) {
-  const sc = scopeConfig.value[lesson.scope]
-  if (!sc?.leaf_BG_Color) return {}
-  return { borderColor: sc.leaf_BG_Color.replace(/[\d.]+\)$/, '0.7)') }
-}
-
+// ── Scope / status / formatting helpers ────────────────────────────────────────
 function scopeTitle(lesson) {
   const sc = scopeConfig.value[lesson.scope]
   return (sc && sc.title) || lesson.scope || ''
@@ -804,11 +772,21 @@ function scopeTitle(lesson) {
 
 function scopeColor(lesson) {
   const sc = scopeConfig.value[lesson.scope]
-  if (!sc?.leaf_BG_Color) return '#aaa'
-  return sc.leaf_BG_Color.replace(/[\d.]+\)$/, '0.7)')
+  if (!sc?.leaf_BG_Color) return '#8a8f98'
+  return sc.leaf_BG_Color.replace(/[\d.]+\)$/, '0.9)')
 }
 
-function hasLink(url) { return !!(url && url.trim()) }
+function statusIcon(lesson) {
+  if (isUnlocked(lesson)) return unlockIconImg
+  if (hasAnyPurchase(lesson)) return halfLockIconImg
+  return lockIconImg
+}
+
+function statusBg(lesson) {
+  if (isUnlocked(lesson)) return unlockBgImg
+  if (hasAnyPurchase(lesson)) return halfLockBgImg
+  return lockBgImg
+}
 
 function openResource(url, title) {
   if (!url) return
@@ -824,528 +802,545 @@ function formatTerm(t) {
   return String(t).replace(/^term\s*/i, 'Term ')
 }
 
-function nodeClass(lesson) {
-  if (lesson.lessonId === currentLesson.value?.lessonId) return 'jt-node--current'
-  if (isUnlocked(lesson)) return 'jt-node--open'
-  if (hasAnyPurchase(lesson)) return 'jt-node--half'
-  return 'jt-node--lock'
-}
-
-function cardClass(lesson) {
-  if (lesson.lessonId === currentLesson.value?.lessonId) return 'jt-card--current'
-  return 'jt-card--open'
-}
-
-function weekBadgeClass(lesson) {
-  if (lesson.lessonId === currentLesson.value?.lessonId) return 'jt-week-badge--current'
-  return 'jt-week-badge--open'
-}
-
-onMounted(loadData)
+onMounted(() => {
+  loadData()
+  loadPoints()
+  nextTick(() => {
+    const tb = document.querySelector('.app-tabbar')
+    if (tb) navHeight.value = tb.offsetHeight
+  })
+})
 </script>
 
 <style scoped>
-/* ── Page layout ─────────────────────────────────────────────────────────── */
+/* ── Page ──────────────────────────────────────────────────────────────────── */
 .jetree-page {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #f7f5f0;
   overflow: hidden;
+  background-color: #faf1e3;
+  background-repeat: no-repeat;
+  background-position: top center;
+  background-size: 100% auto;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 
-/* ── Header ───────────────────────────────────────────────────────────────── */
+/* ── Fixed top (transparent, over the golden tree) ─────────────────────────── */
+.jt-top {
+  flex-shrink: 0;
+  padding: 0 16px 8px;
+}
+
 .jt-header {
-  position: relative;
   display: flex;
   align-items: center;
-  padding: 11px 16px;
-  padding-top: calc(11px + env(safe-area-inset-top));
-  background: #fff;
-  border-bottom: 1px solid #f0ede6;
-  flex-shrink: 0;
+  justify-content: space-between;
+  padding-top: calc(env(safe-area-inset-top) + 12px);
 }
 
-.jt-hd-left {
+.jt-brand {
   display: flex;
   align-items: center;
-  flex-shrink: 0;
-  z-index: 1;
+  gap: 9px;
 }
 
 .jt-brand-ico {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
+}
+
+.jt-brand-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #b78628;
+  letter-spacing: 0.2px;
+}
+
+.jt-return-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 10px rgba(150, 120, 60, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  /* vertically center within the hero row */
+  cursor: pointer;
+  opacity: 0.73; /* 27% transparent */
+}
+
+.jt-return-ico {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+/* ── Hero ──────────────────────────────────────────────────────────────────── */
+.jt-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding: 10px 0;
+}
+
+.jt-hero-left {
+  min-width: 0;
+}
+
+.jt-hero-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1.05;
+  color: #b5842a;
+}
+
+.jt-hero-sub {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 16px;
+  color: #c08e3a;
+}
+
+.jt-hero-sprig {
+  height: 22px;
+  width: auto;
+  object-fit: contain;
+}
+
+.jt-points {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 13px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 10px rgba(150, 120, 60, 0.14);
+  opacity: 0.73; /* 27% transparent */
+}
+
+.jt-points-ico {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+}
+
+.jt-points-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: #24221f;
+}
+
+.jt-points-unit {
+  font-size: 13px;
+  font-weight: 600;
+  color: #a9a08e;
+}
+
+/* ── Selection row ─────────────────────────────────────────────────────────── */
+.jt-filter-bar {
+  display: flex;
+  gap: 7px;
+  margin-top: 16px;
+}
+
+.jt-filter-pill {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 7px;
+  border: none;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 2px 10px rgba(150, 120, 60, 0.1);
+  cursor: pointer;
+  opacity: 0.73; /* 27% transparent */
+}
+
+.jt-filter-ico {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.jt-filter-txt {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: #3a352e;
+  text-align: left;
+}
+
+/* ── Scroll list ───────────────────────────────────────────────────────────── */
+.jt-loading,
+.jt-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.jt-loading-txt {
+  font-size: 13px;
+  color: #b0a58f;
+}
+
+.jt-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: #faf4ea;
+  padding: 6px 16px calc(70px + env(safe-area-inset-bottom));
+  opacity: 0.73; /* 27% transparent */
+}
+
+.jt-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Row = trunk column + leaf ─────────────────────────────────────────────── */
+.jt-row {
+  display: flex;
+  gap: 4px;
+  padding-bottom: 12px;
+}
+
+.jt-trunk-col {
+  position: relative;
+  width: 38px;
+  flex-shrink: 0;
+}
+
+.jt-trunk-line {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 0;
+  bottom: -12px;
+  /* bridge the row gap so the trunk reads as one continuous line */
+  width: 2px;
+  background: #e3bd82;
+}
+
+.jt-trunk-line--first {
+  top: 28px;
+}
+
+.jt-trunk-line--last {
+  bottom: auto;
+  height: 28px;
+}
+
+.jt-badge {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+}
+
+.jt-badge-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.jt-badge-ico {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 19px;
+  height: 19px;
+  object-fit: contain;
+}
+
+/* ── Leaf card ─────────────────────────────────────────────────────────────── */
+.jt-leaf {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1.5px solid #efe6d5;
+  border-radius: 16px;
+  box-shadow: 0 2px 10px rgba(150, 120, 60, 0.06);
+  overflow: hidden;
+}
+
+.jt-leaf--current,
+.jt-leaf--expanded {
+  border-color: #e6b96a;
+  background: rgba(255, 253, 249, 0.96);
+}
+
+.jt-leaf-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 14px;
+  cursor: default;
+}
+
+.jt-week {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: #b5842a;
+  background: #f6ecd6;
+  border-radius: 8px;
+  padding: 4px 8px;
+  min-width: 40px;
+  text-align: center;
+}
+
+.jt-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: 600;
+  color: #24221f;
+  cursor: pointer;
+}
+
+.jt-scope {
+  flex-shrink: 0;
+  max-width: 34%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.jt-chev {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  cursor: pointer;
+}
+
+/* ── Animated resource panel ───────────────────────────────────────────────── */
+.jt-res-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.32s ease;
+}
+
+.jt-res-wrap--open {
+  grid-template-rows: 1fr;
+}
+
+.jt-res-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.jt-res-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0 10px 12px;
+}
+
+.jt-rcard {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid #f0e8d8;
+  border-radius: 12px;
+  background: #fffdf9;
+  cursor: pointer;
+}
+
+.jt-rcard--lock {
+  opacity: 0.7;
+}
+
+.jt-rcard-ico {
+  position: relative;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+}
+
+.jt-rcard-ico img {
   width: 26px;
   height: 26px;
   object-fit: contain;
 }
 
-.jt-hd-center {
+.jt-rcard--lock .jt-rcard-ico img {
+  filter: grayscale(0.5);
+  opacity: 0.6;
+}
+
+.jt-rcard-lockbadge {
   position: absolute;
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-family: Georgia, serif;
-  font-size: 17px;
-  font-weight: 800;
-  background: linear-gradient(135deg, #C89239, #b8860b);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  pointer-events: none;
-}
-
-.jt-hd-right {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  z-index: 1;
-}
-
-.jt-cur-btn {
-  background: #C89239;
-  color: #fff;
-  border: none;
-  border-radius: 16px;
-  padding: 7px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-/* ── Filter bar ────────────────────────────────────────────────────────────── */
-.jt-filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  padding: 8px 14px;
-  background: #fff;
-  border-bottom: 1px solid #f0ede6;
-  overflow-x: auto;
-  flex-shrink: 0;
-  -webkit-overflow-scrolling: touch;
-}
-.jt-filter-bar::-webkit-scrollbar { display: none; }
-
-.jt-filter-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: #faf8f4;
-  border: 1px solid #e8dfc5;
-  border-radius: 18px;
-  padding: 6px 12px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #24221F;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.jt-filter-divider {
-  width: 1px;
-  height: 20px;
-  background: #e8e0d0;
-  margin: 0 10px;
-  flex-shrink: 0;
-}
-
-/* ── Loading / Empty ──────────────────────────────────────────────────────── */
-.jt-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 80px 0;
-}
-
-.jt-loading-txt {
-  font-size: 15px;
-  color: #bbb;
-}
-
-.jt-empty {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* ── Scroll area ──────────────────────────────────────────────────────────── */
-.jt-scroll {
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.jt-list {
-  padding: 12px 16px calc(48px + env(safe-area-inset-bottom));
-}
-
-/* ── Trunk caps (top/bottom connectors) ───────────────────────────────────── */
-.jt-trunk-cap {
-  display: flex;
-  justify-content: flex-start;
-  padding-left: calc(36px / 2 - 1.5px);
-}
-
-.jt-trunk-cap--top { height: 16px; }
-.jt-trunk-cap--bot { height: 24px; }
-
-.jt-trunk-cap::before {
-  content: '';
-  width: 3px;
-  height: 100%;
-  background: linear-gradient(to bottom, transparent, #d4c9b0);
-  border-radius: 2px;
-}
-
-.jt-trunk-cap--bot::before {
-  background: linear-gradient(to bottom, #d4c9b0, transparent);
-}
-
-/* ── Lesson row ───────────────────────────────────────────────────────────── */
-.jt-row {
-  display: flex;
-  align-items: stretch;
-  gap: 14px;
-  cursor: pointer;
-}
-
-/* ── Trunk column ─────────────────────────────────────────────────────────── */
-.jt-trunk-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-shrink: 0;
-  width: 36px;
-}
-
-.jt-trunk-line {
-  width: 3px;
-  flex: 1;
-  background: #d4c9b0;
-  min-height: 10px;
-}
-
-.jt-trunk-line--first { background: linear-gradient(to bottom, transparent, #d4c9b0); }
-.jt-trunk-line--last  { background: linear-gradient(to bottom, #d4c9b0, transparent); }
-
-/* ── Trunk node (circle) — mirrors jt2-lico from management portal ────────── */
-.jt-node {
-  width: 36px;
-  height: 36px;
+  right: -3px;
+  bottom: -3px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
+  background: #b9a98a;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  border: 2.5px solid #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.14);
 }
 
-.jt-node--open    { background: #2AA540; }          /* green — unlocked */
-.jt-node--lock    { background: #B5B5B5; }          /* grey  — locked   */
-.jt-node--half    { background: #F59E0B; }          /* amber — purchased but locked (future) */
-.jt-node--current { background: #C89239; }          /* gold  — student's current week */
-
-.jt-node-img {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-}
-
-/* ── Lesson card ──────────────────────────────────────────────────────────── */
-.jt-card {
-  flex: 1;
+.jt-rcard-txt {
   min-width: 0;
-  border-radius: 14px;
-  padding: 13px 14px;
-  margin: 5px 0;
-  transition: box-shadow 0.15s;
-  border: 1.5px solid transparent;
 }
 
-.jt-card:active { opacity: 0.85; }
-
-.jt-card--current {
-  background: linear-gradient(135deg, #fffbf0, #fff6e0);
-  border-color: #C89239;
-  box-shadow: 0 2px 14px rgba(200,146,57,0.15);
-}
-
-.jt-card--open {
-  background: #fff;
-  border-color: #ede8dc;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.05);
-}
-
-/* ── Card top row ─────────────────────────────────────────────────────────── */
-.jt-card-top {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-bottom: 5px;
-}
-
-.jt-week-badge {
-  font-size: 13px;
+.jt-rcard-name {
+  font-size: 12.5px;
   font-weight: 700;
-  border-radius: 8px;
-  padding: 2px 8px;
-}
-
-.jt-week-badge--current {
-  background: #C89239;
-  color: #fff;
-}
-
-.jt-week-badge--open {
-  background: rgba(200,146,57,0.12);
-  color: #C89239;
-}
-
-
-.jt-cur-badge {
-  font-size: 12px;
-  font-weight: 700;
-  color: #C89239;
-  background: rgba(200,146,57,0.1);
-  border: 1px solid rgba(200,146,57,0.3);
-  border-radius: 8px;
-  padding: 1px 7px;
-}
-
-
-.jt-scope-badge {
-  margin-left: auto;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
+  color: #24221f;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 110px;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
 }
 
-.jt-lock-badge {
-  font-size: 12px;
+.jt-rcard-sub {
+  font-size: 11px;
+  color: #a49a86;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jt-rcard-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.jt-price-was {
+  font-size: 10.5px;
+  color: #b8ad98;
+  text-decoration: line-through;
+}
+
+.jt-price-now {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #d9822b;
+}
+
+.jt-price-unit {
+  font-size: 10px;
+  font-weight: 600;
+  color: #c0a86f;
+}
+
+.jt-res-empty {
+  padding: 0 12px 14px;
+  font-size: 13px;
   color: #bbb;
-  display: flex;
-  align-items: center;
-  gap: 3px;
+  text-align: center;
 }
 
-/* ── Card body ────────────────────────────────────────────────────────────── */
-.jt-card-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: #24221F;
-  line-height: 1.3;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-
-.jt-card-scope {
-  font-size: 13px;
-  color: #aaa;
-  margin-top: 3px;
-  line-height: 1.3;
-}
-
-
-/* ── Bottom sheet dialog ─────────────────────────────────────────────────── */
+/* ── Lesson detail dialog ──────────────────────────────────────────────────── */
 .jt-dlg {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-  background: #fff;
+  padding: 8px 20px 24px;
 }
 
 .jt-dlg-handle {
-  width: 36px;
+  width: 40px;
   height: 4px;
   border-radius: 2px;
-  background: #e0dbd0;
-  margin: 10px auto 0;
-  flex-shrink: 0;
+  background: #e2dccf;
+  margin: 6px auto 14px;
 }
 
 .jt-dlg-hd {
-  padding: 14px 20px 16px;
-  border-bottom: 1px solid #f0ede6;
-  flex-shrink: 0;
+  margin-bottom: 14px;
 }
 
 .jt-dlg-title {
   font-size: 20px;
-  font-weight: 700;
-  color: #24221F;
+  font-weight: 800;
+  color: #24221f;
   line-height: 1.3;
 }
 
-/* Week ● Scope meta row — mirrors cl-meta-row on HomeView */
 .jt-dlg-sub {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 2px;
+  gap: 7px;
   margin-top: 6px;
 }
 
 .jt-dlg-week {
-  color: #448BE9;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
+  color: #b5842a;
 }
 
 .jt-dlg-dot {
-  color: #C0C0C0;
-  font-size: 8px;
-  margin: 0 4px;
-  flex-shrink: 0;
+  font-size: 6px;
+  color: #d8cdb8;
 }
 
 .jt-dlg-scope {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
 }
 
-/* ── Dialog scroll panel ─────────────────────────────────────────────────── */
 .jt-dlg-scroll {
-  flex: 1;
+  max-height: 46vh;
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
-/* Section headers (Description & Objectives / Learning Resources) — mirrors jt2-dlg-sec-hd */
 .jt-sec-hd {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 700;
-  color: #24221F;
-  padding-bottom: 6px;
-  border-bottom: 1px solid #f0ede6;
-  margin-bottom: 12px;
+  color: #24221f;
+  margin-bottom: 8px;
 }
 
-.jt-sec-ico {
-  width: 22px;
-  height: 22px;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
-.jt-sec-hd--res {
-  margin-top: 26px;
-}
-
-/* ── Tab body ─────────────────────────────────────────────────────────────── */
-.jt-tab-body {
-  padding: 16px 20px;
-  padding-bottom: calc(16px + env(safe-area-inset-bottom));
-}
-
-/* Description HTML */
 .jt-desc {
-  font-size: 16px;
-  color: #444;
-  line-height: 1.75;
-}
-
-:deep(.jt-desc p)  { margin: 0 0 12px; }
-:deep(.jt-desc ul) { padding-left: 20px; margin: 0 0 12px; }
-:deep(.jt-desc li) { margin-bottom: 5px; }
-:deep(.jt-desc h3) { font-size: 17px; color: #24221F; margin: 14px 0 6px; }
-
-.jt-no-content {
-  padding: 20px 0;
-}
-
-/* ── Resource grid (Basic/Extra Services) ─────────────────────────────────── */
-.jt-grp-lbl {
-  font-size: 15px;
-  font-weight: 700;
-  color: #24221F;
-  margin: 16px 0 10px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid #f0ede6;
-}
-
-.jt-grp-lbl--extra {
-  margin-top: 20px;
-}
-
-.jt-res-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-}
-
-.jt-rcard {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  text-align: center;
-}
-
-/* Resource icons — mirrors jt2-rico-wrap from JETreeV2 */
-.jt-rico-wrap {
-  width: 52px;
-  height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.jt-rico--open { background: transparent; }
-
-.jt-rico--lock {
-  background: #B5B5B5;
-  border-radius: 10px;
-}
-
-.jt-rico {
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
-}
-
-.jt-rnm {
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.7;
   color: #555;
-  line-height: 1.3;
-  min-height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-.jt-rbtn {
-  width: 100%;
-  padding: 6px 2px;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  line-height: 1.3;
-  background: #e8e8e8;
-  color: #888;
+.jt-desc :deep(img) {
+  max-width: 100%;
+  height: auto;
 }
-
-.jt-rbtn--watch    { background: #448BE9; color: #fff; }
-.jt-rbtn--start    { background: #22C55E; color: #fff; }
-.jt-rbtn--download { background: #334155; color: #fff; }
-.jt-rbtn--access   { background: #0891B2; color: #fff; }
-.jt-rbtn--price    { background: #f5f0e8; color: #C89239; font-size: 12px; }
 </style>

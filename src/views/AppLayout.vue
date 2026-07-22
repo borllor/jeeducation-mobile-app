@@ -6,25 +6,25 @@
     <van-tabbar v-model="active" active-color="#C89239" inactive-color="#999" class="app-tabbar">
       <van-tabbar-item name="home" @click="$router.push('/home')">
         <template #icon="{ active }">
-          <van-icon :name="active ? 'wap-home' : 'home-o'" size="22" />
+          <img :src="active ? navHome : navHomeGrey" class="tab-icon" alt="Home" />
         </template>
         Home
       </van-tabbar-item>
       <van-tabbar-item name="jetree" @click="$router.push('/jetree')">
         <template #icon="{ active }">
-          <img :src="active ? jetreeIcon : jetreeIconGray" class="tab-icon" alt="JE Tree" />
+          <img :src="active ? navJetree : navJetreeGrey" class="tab-icon" alt="JE Tree" />
         </template>
         JE Tree
       </van-tabbar-item>
       <van-tabbar-item name="class" @click="$router.push('/class')">
         <template #icon="{ active }">
-          <van-icon :name="active ? 'friends' : 'friends-o'" size="22" />
+          <img :src="active ? navClass : navClassGrey" class="tab-icon" alt="Class Bubble" />
         </template>
         Class Bubble
       </van-tabbar-item>
       <van-tabbar-item name="me" @click="$router.push('/me')">
         <template #icon="{ active }">
-          <van-icon :name="active ? 'contact' : 'contact-o'" size="22" />
+          <img :src="active ? navMe : navMeGrey" class="tab-icon" alt="Me" />
         </template>
         Me
       </van-tabbar-item>
@@ -35,8 +35,18 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import jetreeIcon from '@/assets/img/jetree-icon.png'
-import jetreeIconGray from '@/assets/img/jetree-icon-gray.png'
+
+// Bottom-nav icons: colored (nav-*-icon) for the active tab, grey (nav-*-grey-icon)
+// for inactive. JE Tree's active state uses tree-icon (its colored counterpart, as
+// there is no nav-jetree-icon).
+import navHome from '@/assets/img/new/nav-homepage-icon.png'
+import navHomeGrey from '@/assets/img/new/nav-homepage-grey-icon.png'
+import navJetree from '@/assets/img/new/tree-icon.png'
+import navJetreeGrey from '@/assets/img/new/nav-jetree-grey-icon.png'
+import navClass from '@/assets/img/new/nav-class-bubble-icon.png'
+import navClassGrey from '@/assets/img/new/nav-class-bubble-grey-icon.png'
+import navMe from '@/assets/img/new/nav-me-icon.png'
+import navMeGrey from '@/assets/img/new/nav-me-grey-icon.png'
 
 const route = useRoute()
 const active = ref(route.name || 'home')
@@ -65,19 +75,14 @@ watch(() => route.name, (name) => {
 .app-tabbar {
   flex-shrink: 0;
   border-top: 1px solid #eee;
+  /* Keep the bottom nav above popups/overlays — bottom sheets end at its top edge */
+  z-index: 3000;
+  padding: 4px 0;
 }
 
 .tab-icon {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   object-fit: contain;
-}
-
-:deep(.van-tabbar-item--active .van-icon) {
-  color: #C89239;
-}
-
-:deep(.van-tabbar-item:not(.van-tabbar-item--active) .van-icon) {
-  color: #999;
 }
 </style>

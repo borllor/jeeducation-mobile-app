@@ -241,6 +241,7 @@ onMounted(() => {
   flex-direction: column;
   gap: 12px;
   margin-top: 40px;
+  opacity: 0.73; /* 27% transparent */
 }
 
 .card--day {

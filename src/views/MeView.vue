@@ -321,7 +321,7 @@ onMounted(loadData)
 .me-profile-name {
   font-size: 18px;
   font-weight: 700;
-  color: #24221F;
+  color: #624A28;
   margin-bottom: 3px;
 }
 
