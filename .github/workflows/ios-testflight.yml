@@ -94,92 +94,28 @@ jobs:
       # -----------------------------------------------------------------------
       # MODE B: signing secrets present -> archive, export .ipa, upload TestFlight.
       # -----------------------------------------------------------------------
-      - name: Prepare App Store Connect API key
+      # fastlane creates a real Apple Distribution certificate and an App Store
+      # provisioning profile through the App Store Connect API, then archives with
+      # MANUAL signing. This is required because xcodebuild's automatic signing
+      # always provisions an "iOS App Development" profile (which needs a registered
+      # device), and rejects an Apple Distribution identity as a conflict.
+      # See fastlane/Fastfile for details.
+      - name: Build and upload to TestFlight (fastlane)
         if: env.HAS_SIGNING == 'true'
-        run: |
-          mkdir -p ~/.appstoreconnect/private_keys
-          KEY_FILE=~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_API_KEY_ID }}.p8
-          printf '%s' "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" > "$KEY_FILE"
-          # A local copy for the xcodebuild -authenticationKeyPath flag:
-          printf '%s' "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" > "$RUNNER_TEMP/AuthKey.p8"
-          echo "AUTH_KEY_PATH=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
-
-      - name: Archive (automatic signing via API key)
-        if: env.HAS_SIGNING == 'true'
-        run: |
-          # CODE_SIGN_IDENTITY="Apple Distribution" is essential: without it Xcode
-          # tries to build an *iOS App Development* profile, which requires at least
-          # one registered device and fails with "Your team has no devices...".
-          # App Store distribution profiles need no registered devices.
-          xcodebuild \
-            -workspace ios/App/App.xcworkspace \
-            -scheme App \
-            -configuration Release \
-            -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/App.xcarchive" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$AUTH_KEY_PATH" \
-            -authenticationKeyID "${{ secrets.APPSTORE_API_KEY_ID }}" \
-            -authenticationKeyIssuerID "${{ secrets.APPSTORE_API_ISSUER_ID }}" \
-            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
-            CODE_SIGN_STYLE=Automatic \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            IPHONEOS_DEPLOYMENT_TARGET=${IPHONEOS_DEPLOYMENT_TARGET} \
-            MARKETING_VERSION=${MARKETING_VERSION} \
-            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
-            archive
-
-      - name: Write ExportOptions.plist
-        if: env.HAS_SIGNING == 'true'
-        run: |
-          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store</string>
-            <key>destination</key>
-            <string>export</string>
-            <key>teamID</key>
-            <string>${{ secrets.APPLE_TEAM_ID }}</string>
-            <key>signingStyle</key>
-            <string>automatic</string>
-            <key>uploadSymbols</key>
-            <true/>
-          </dict>
-          </plist>
-          PLIST
-
-      - name: Export .ipa
-        if: env.HAS_SIGNING == 'true'
-        run: |
-          xcodebuild \
-            -exportArchive \
-            -archivePath "$RUNNER_TEMP/App.xcarchive" \
-            -exportPath "$RUNNER_TEMP/export" \
-            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$AUTH_KEY_PATH" \
-            -authenticationKeyID "${{ secrets.APPSTORE_API_KEY_ID }}" \
-            -authenticationKeyIssuerID "${{ secrets.APPSTORE_API_ISSUER_ID }}"
+        env:
+          ASC_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+          ASC_KEY_CONTENT: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          FASTLANE_SKIP_UPDATE_CHECK: '1'
+          FASTLANE_HIDE_CHANGELOG: '1'
+          FASTLANE_DISABLE_COLORS: '1'
+        run: fastlane ios beta
 
       - name: Upload .ipa as workflow artifact
         if: env.HAS_SIGNING == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: JE-Education-ios
-          path: ${{ runner.temp }}/export/*.ipa
+          path: ${{ runner.temp }}/*.ipa
           if-no-files-found: error
-
-      - name: Upload to TestFlight
-        if: env.HAS_SIGNING == 'true'
-        run: |
-          IPA=$(ls "$RUNNER_TEMP"/export/*.ipa | head -1)
-          echo "Uploading $IPA to TestFlight..."
-          xcrun altool --upload-app \
-            --type ios \
-            --file "$IPA" \
-            --apiKey "${{ secrets.APPSTORE_API_KEY_ID }}" \
-            --apiIssuer "${{ secrets.APPSTORE_API_ISSUER_ID }}"
