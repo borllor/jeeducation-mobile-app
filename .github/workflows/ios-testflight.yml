@@ -107,6 +107,10 @@ jobs:
       - name: Archive (automatic signing via API key)
         if: env.HAS_SIGNING == 'true'
         run: |
+          # CODE_SIGN_IDENTITY="Apple Distribution" is essential: without it Xcode
+          # tries to build an *iOS App Development* profile, which requires at least
+          # one registered device and fails with "Your team has no devices...".
+          # App Store distribution profiles need no registered devices.
           xcodebuild \
             -workspace ios/App/App.xcworkspace \
             -scheme App \
@@ -120,6 +124,7 @@ jobs:
             -authenticationKeyIssuerID "${{ secrets.APPSTORE_API_ISSUER_ID }}" \
             DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
             CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
             IPHONEOS_DEPLOYMENT_TARGET=${IPHONEOS_DEPLOYMENT_TARGET} \
             MARKETING_VERSION=${MARKETING_VERSION} \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
