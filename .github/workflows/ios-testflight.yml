@@ -24,8 +24,10 @@ on:
     tags:
       - 'v*'                   # e.g. push tag v1.0.0 to cut a TestFlight build
 
-# NOTE: macOS runner minutes count 10x against the free quota, so this does NOT
-# run on every push to main — only on manual dispatch or a version tag.
+# This repo is public, so GitHub Actions macOS minutes are free and unlimited.
+# Builds are still limited to manual dispatch / version tags to keep the run
+# history meaningful — and because only those triggers can reach the signing
+# secrets (a fork's pull request never can).
 
 jobs:
   ios:

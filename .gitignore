@@ -8,7 +8,7 @@ Thumbs.db
 .playwright-mcp/
 
 # Local image backups — not referenced by the app, kept out of the repo
-# to avoid bloating CI checkouts (macOS runner minutes bill 10x).
+# so CI checkouts stay small (~49MB of unused PNGs).
 src/assets/img/backup/
 src/assets/img/Legacy/
 
