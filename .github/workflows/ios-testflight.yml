@@ -69,6 +69,12 @@ jobs:
             npx cap add ios
           fi
 
+      # Generate the iOS AppIcon set (and splash) from assets/icon.png etc.
+      # The App Store marketing icon is extracted from the build, so it must be
+      # a flat 1024x1024 with NO alpha — assets/icon.png is already opaque.
+      - name: Generate app icons & splash (Capacitor assets)
+        run: npx @capacitor/assets generate --ios
+
       # -----------------------------------------------------------------------
       # MODE A: no signing secrets -> just prove the iOS project compiles.
       # -----------------------------------------------------------------------
