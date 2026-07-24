@@ -127,7 +127,7 @@
     <van-popup v-model:show="showYearPicker" position="bottom" round teleport="body" class="jt-above-nav"
       :style="{ bottom: navHeight + 'px' }">
       <van-picker :columns="gradeOptions" :default-index="gradeOptions.findIndex(g => g.value === selectedGrade)"
-        @confirm="onYearConfirm" @cancel="showYearPicker = false" title="Select Year" confirm-button-text="Confirm"
+        @confirm="onYearConfirm" @cancel="showYearPicker = false" title="Select Level" confirm-button-text="Confirm"
         cancel-button-text="Cancel" />
     </van-popup>
 
@@ -177,6 +177,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { getData, postData } from '@/services/api'
+import formatter from '@/services/formatter'
 import { useAuthStore } from '@/stores/auth'
 import { showConfirmDialog, showToast, showDialog } from 'vant'
 
@@ -324,7 +325,9 @@ const gradeOptions = computed(() => {
     if (!grades.has(g)) grades.set(g, gv)
   }
   return [...grades.entries()]
-    .sort((a, b) => a[1] - b[1])
+    // Sort by the displayed Level number (formatGrade2 maps years -> Level 1..4),
+    // falling back to grade value so ties keep a stable order.
+    .sort((a, b) => levelNum(a[0]) - levelNum(b[0]) || a[1] - b[1])
     .map(([g]) => ({ text: formatGrade(g), value: g }))
 })
 
@@ -794,8 +797,13 @@ function openResource(url, title) {
 }
 
 function formatGrade(g) {
-  const n = String(g).replace(/\D/g, '')
-  return n ? `Year ${n}` : g
+  return formatter.formatGrade2(g)
+}
+
+// Numeric Level (1..4) parsed from the formatted label, for sorting.
+function levelNum(g) {
+  const n = parseInt(String(formatGrade(g)).replace(/\D/g, ''))
+  return Number.isNaN(n) ? 0 : n
 }
 
 function formatTerm(t) {
