@@ -84,14 +84,14 @@ platform :ios do
       output_name: "JE-Education.ipa",
       clean: false,
       # Version/build number and the iPhone X (iOS 13.0) deployment target.
+      # NOTE: do NOT put PROVISIONING_PROFILE_SPECIFIER here — the profile name
+      # can contain spaces (e.g. "com.jeeducation.app AppStore 1784862513"),
+      # which xcodebuild would parse as extra build actions. The manual profile
+      # is already written into the project by update_code_signing_settings above.
       xcargs: [
         "IPHONEOS_DEPLOYMENT_TARGET=#{ENV.fetch('IPHONEOS_DEPLOYMENT_TARGET', '13.0')}",
         "MARKETING_VERSION=#{ENV.fetch('MARKETING_VERSION', '1.0.0')}",
-        "CURRENT_PROJECT_VERSION=#{ENV.fetch('GITHUB_RUN_NUMBER', '1')}",
-        # Force the archive step to use our manual profile + team explicitly.
-        "DEVELOPMENT_TEAM=#{team_id}",
-        "PROVISIONING_PROFILE_SPECIFIER=#{profile_name}",
-        "CODE_SIGN_STYLE=Manual"
+        "CURRENT_PROJECT_VERSION=#{ENV.fetch('GITHUB_RUN_NUMBER', '1')}"
       ].join(" "),
       export_options: {
         method: "app-store",
