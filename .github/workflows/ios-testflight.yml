@@ -107,6 +107,7 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             IPHONEOS_DEPLOYMENT_TARGET=${IPHONEOS_DEPLOYMENT_TARGET} \
+            TARGETED_DEVICE_FAMILY=1 \
             CODE_SIGNING_ALLOWED=NO \
             build
 
