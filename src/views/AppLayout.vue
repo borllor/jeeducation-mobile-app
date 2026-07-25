@@ -39,14 +39,14 @@ import { useRoute } from 'vue-router'
 // Bottom-nav icons: colored (nav-*-icon) for the active tab, grey (nav-*-grey-icon)
 // for inactive. JE Tree's active state uses tree-icon (its colored counterpart, as
 // there is no nav-jetree-icon).
-import navHome from '@/assets/img/new/nav-homepage-icon.png'
-import navHomeGrey from '@/assets/img/new/nav-homepage-grey-icon.png'
-import navJetree from '@/assets/img/new/tree-icon.png'
-import navJetreeGrey from '@/assets/img/new/nav-jetree-grey-icon.png'
-import navClass from '@/assets/img/new/nav-class-bubble-icon.png'
-import navClassGrey from '@/assets/img/new/nav-class-bubble-grey-icon.png'
-import navMe from '@/assets/img/new/nav-me-icon.png'
-import navMeGrey from '@/assets/img/new/nav-me-grey-icon.png'
+import navHome from '@/assets/img/nav-homepage-icon.png'
+import navHomeGrey from '@/assets/img/nav-homepage-grey-icon.png'
+import navJetree from '@/assets/img/tree-icon.png'
+import navJetreeGrey from '@/assets/img/nav-jetree-grey-icon.png'
+import navClass from '@/assets/img/nav-class-bubble-icon.png'
+import navClassGrey from '@/assets/img/nav-class-bubble-grey-icon.png'
+import navMe from '@/assets/img/nav-me-icon.png'
+import navMeGrey from '@/assets/img/nav-me-grey-icon.png'
 
 const route = useRoute()
 const active = ref(route.name || 'home')

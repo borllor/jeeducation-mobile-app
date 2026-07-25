@@ -1,6 +1,11 @@
 <template>
   <router-view />
+  <NetworkLogPanel />
 </template>
+
+<script setup>
+import NetworkLogPanel from '@/components/NetworkLogPanel.vue'
+</script>
 
 <style>
 * {
@@ -24,5 +29,14 @@ html, body, #app {
   --je-gold-light: #d4af5a;
   --je-black: #24221F;
   --je-card-radius: 16px;
+}
+
+/* Vant toasts default to word-break: break-all, which splits words mid-letter
+   (e.g. "conn-ect"). Wrap at spaces instead so whole words stay intact. */
+.van-toast {
+  max-width: 260px !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+  line-height: 1.4 !important;
 }
 </style>

@@ -3,6 +3,7 @@ import appConfig from './appConfig'
 import { useAuthStore } from '@/stores/auth'
 import { showLoadingToast, closeToast } from 'vant'
 import router from '@/router'
+import { logStart, logSuccess, logError } from './netlog'
 
 const http = axios.create({
   baseURL: appConfig.getAPIRoot(),
@@ -19,20 +20,27 @@ http.interceptors.request.use((config) => {
     const auth = useAuthStore()
     if (!auth.isAccessTokenValid) {
       closeToast()
-      return Promise.reject(new Error('SESSION_EXPIRED'))
+      const entry = logStart(config)
+      const err = new Error('SESSION_EXPIRED')
+      logError(entry, err)
+      return Promise.reject(err)
     }
     config.headers['Authorization'] = `Bearer ${auth.accessToken}`
   }
+  // Record the outgoing request; finalized in the response/error interceptor.
+  config.__netlog = logStart(config)
   return config
 })
 
 http.interceptors.response.use(
   (response) => {
     closeToast()
+    logSuccess(response.config?.__netlog, response)
     return response.data
   },
   (error) => {
     closeToast()
+    logError(error.config?.__netlog, error)
     if (error.response?.status === 401 || error.message === 'SESSION_EXPIRED') {
       const auth = useAuthStore()
       auth.signOut()
