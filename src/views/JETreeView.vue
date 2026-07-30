@@ -706,7 +706,7 @@ async function handleUnlock(lesson, itemId, linkText, isExtra) {
       purchasedRecords.value.push(res.result)
       showToast({ message: 'Unlocked successfully', type: 'success' })
     } else if (res?.code === '414') {
-      showToast({ message: 'Not enough points. Please contact Mr Hu.', type: 'fail' })
+      showToast({ message: 'Not enough points.', type: 'fail' })
     } else {
       showToast({ message: res?.message || 'Purchase failed', type: 'fail' })
     }
