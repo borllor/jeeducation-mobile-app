@@ -20,12 +20,7 @@
       <!-- Profile Card -->
       <div class="me-profile-card">
         <div class="me-avatar-wrap">
-          <img
-            v-if="!imgError"
-            :src="profileImgUrl"
-            class="me-avatar-img"
-            @error="imgError = true"
-          />
+          <img v-if="!imgError" :src="profileImgUrl" class="me-avatar-img" @error="imgError = true" />
           <div v-else class="me-avatar-init">{{ initials }}</div>
         </div>
         <div class="me-profile-info">
@@ -66,7 +61,7 @@
 
       <!-- Group 2: JE Points + My Classes -->
       <div class="me-group">
-        <div class="me-menu-item" @click="$router.push('/me/points')">
+        <div v-if="false" class="me-menu-item" @click="$router.push('/me/points')">
           <div class="me-ico-wrap" style="background: #fff8e6;">
             <van-icon name="gold-coin-o" size="20" color="#E6A23C" />
           </div>
